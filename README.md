@@ -165,6 +165,7 @@ public class SignupService
     {
         await _sendhiiv.Messages.SendAsync(new SendMessageParams
         {
+            From = "Acme <hello@yourdomain.com>",
             To = { email },
             Subject = "Welcome to Acme",
             TemplateKey = "welcome-email",
