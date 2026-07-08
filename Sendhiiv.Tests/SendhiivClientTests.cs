@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using Xunit;
@@ -29,7 +30,7 @@ internal class FakeHandler : HttpMessageHandler
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var body = request.Content == null ? "" : await request.Content.ReadAsStringAsync(cancellationToken);
+        var body = request.Content == null ? "" : await request.Content.ReadAsStringAsync();
         Calls.Add((request, body));
         var next = _responses.Count > 1 ? _responses.Dequeue() : _responses.Peek();
         return next();

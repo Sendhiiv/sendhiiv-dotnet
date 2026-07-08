@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net45;net8.0</TargetFrameworks>
     <LangVersion>10.0</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
@@ -9,10 +9,10 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 
     <PackageId>Sendhiiv</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>Sendhiiv</Authors>
     <Company>Sendhiiv</Company>
-    <Description>Official .NET SDK for the Sendhiiv email API — send transactional email with one call. Works on .NET Framework 4.6.2+ and all modern .NET.</Description>
+    <Description>Official .NET SDK for the Sendhiiv email API — send transactional email with one call. Works on .NET Framework 4.5+ and all modern .NET.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://sendhiiv.com/docs/api</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Sendhiiv/sendhiiv-dotnet</RepositoryUrl>
@@ -23,6 +23,16 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <!-- net45 predates System.Text.Json, so that target serializes with Newtonsoft. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net45'">
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

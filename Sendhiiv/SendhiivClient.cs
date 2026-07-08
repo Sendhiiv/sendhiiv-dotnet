@@ -2,9 +2,14 @@ using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+#if NET45
+using System.Net;
+using Newtonsoft.Json;
+#else
+using System.Text.Json;
+#endif
 
 namespace Sendhiiv
 {
@@ -39,10 +44,24 @@ namespace Sendhiiv
     /// </summary>
     public class SendhiivClient
     {
+#if NET45
+        private static readonly JsonSerializerSettings JsonOptions = new JsonSerializerSettings
+        {
+            NullValueHandling = NullValueHandling.Ignore,
+        };
+
+        static SendhiivClient()
+        {
+            // .NET Framework 4.5 negotiates TLS 1.0 by default and the API only
+            // accepts TLS 1.2+, so opt in here instead of making every caller do it.
+            ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+        }
+#else
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
             DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
         };
+#endif
 
         private readonly HttpClient _http;
         private readonly string _apiKey;
@@ -70,7 +89,11 @@ namespace Sendhiiv
         internal async Task<SendMessageResponse> PostMessageAsync(
             SendMessageParams message, CancellationToken cancellationToken)
         {
+#if NET45
+            var json = JsonConvert.SerializeObject(message, JsonOptions);
+#else
             var json = JsonSerializer.Serialize(message, JsonOptions);
+#endif
 
             // Only 429 (rate limit) is retried: the limiter runs before anything
             // is queued, so a retry can never double-send. 5xx and network errors
@@ -86,7 +109,7 @@ namespace Sendhiiv
                         Content = new StringContent(json, Encoding.UTF8, "application/json"),
                     };
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-                    request.Headers.UserAgent.ParseAdd("sendhiiv-dotnet/0.1.0");
+                    request.Headers.UserAgent.ParseAdd("sendhiiv-dotnet/0.2.0");
 
                     try
                     {
@@ -151,7 +174,11 @@ namespace Sendhiiv
         {
             try
             {
+#if NET45
+                return JsonConvert.DeserializeObject<T>(body, JsonOptions);
+#else
                 return JsonSerializer.Deserialize<T>(body, JsonOptions);
+#endif
             }
             catch (JsonException)
             {

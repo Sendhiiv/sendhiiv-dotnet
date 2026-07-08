@@ -1,7 +1,10 @@
 # Sendhiiv .NET SDK
 
 Official .NET client for the [Sendhiiv](https://sendhiiv.com) email API.
-Targets `netstandard2.0` — works on **.NET Framework 4.6.2+**, .NET 6/8+, and Mono.
+Works on **.NET Framework 4.5+**, .NET 6/8+, and Mono — a dedicated `net45`
+build covers classic Framework apps back to 2012, alongside `netstandard2.0`
+and `net8.0` builds for everything newer. NuGet picks the right one
+automatically.
 
 ```
 dotnet add package Sendhiiv
@@ -178,11 +181,30 @@ The SDK never disposes an `HttpClient` you pass in — lifetime stays yours.
 
 ## .NET Framework
 
-Nothing special is required: the package targets `netstandard2.0`, so it
-installs into Framework 4.6.2+ projects directly. All calls are async; if
-you're stuck in synchronous code, `.GetAwaiter().GetResult()` is safe here
-because the SDK awaits internally with `ConfigureAwait(false)` — it won't
-deadlock on the ASP.NET/WinForms synchronization context.
+Nothing special is required — `Install-Package Sendhiiv` works in Framework
+projects from 4.5 up, including old ASP.NET MVC / Web API / WebForms apps.
+NuGet picks the right build: 4.5–4.6.1 projects get the `net45` build,
+4.6.2+ gets `netstandard2.0`.
+
+Details worth knowing on old Framework versions:
+
+- **TLS is handled for you.** .NET 4.5 negotiates TLS 1.0 by default, which
+  the API rejects. The `net45` build enables TLS 1.2 itself the first time
+  you create a `SendhiivClient`, so sends work without touching
+  `ServicePointManager` or the registry.
+- **The `net45` build depends on `Newtonsoft.Json`** (13.0.3+), since
+  `System.Text.Json` doesn't exist there. Most Framework apps of that era
+  already have it; NuGet installs or upgrades it as needed. The
+  `netstandard2.0` and `net8.0` builds use `System.Text.Json` and don't
+  reference Newtonsoft at all.
+- **Synchronous code is fine.** All calls are async, but
+  `.GetAwaiter().GetResult()` won't deadlock on the ASP.NET/WinForms
+  synchronization context, because the SDK awaits internally with
+  `ConfigureAwait(false)`.
+
+The test suite runs against both the modern build and the `net45` build on the
+classic CLR, so the Framework path is exercised on every change, not just
+compiled.
 
 ## What a successful send returns
 

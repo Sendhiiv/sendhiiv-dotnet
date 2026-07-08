@@ -1,5 +1,11 @@
 using System.Collections.Generic;
+#if NET45
+// Newtonsoft's [JsonProperty("...")] plays the same role as [JsonPropertyName("...")],
+// so the net45 build reuses the annotations below via this alias.
+using JsonPropertyNameAttribute = Newtonsoft.Json.JsonPropertyAttribute;
+#else
 using System.Text.Json.Serialization;
+#endif
 
 namespace Sendhiiv
 {
