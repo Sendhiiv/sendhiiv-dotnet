@@ -193,11 +193,13 @@ Details worth knowing on old Framework versions:
   the API rejects. The `net45` build enables TLS 1.2 itself the first time
   you create a `SendhiivClient`, so sends work without touching
   `ServicePointManager` or the registry.
-- **The `net45` build depends on `Newtonsoft.Json`** (13.0.3+), since
-  `System.Text.Json` doesn't exist there. Most Framework apps of that era
-  already have it; NuGet installs or upgrades it as needed. The
-  `netstandard2.0` and `net8.0` builds use `System.Text.Json` and don't
-  reference Newtonsoft at all.
+- **The `net45` build depends on `Newtonsoft.Json`** (9.0.1 or newer — any
+  version your app already uses is fine), since `System.Text.Json` doesn't
+  exist there. It's compiled against 9.0.1 deliberately, so the binding
+  redirect already present in a typical Framework app covers it and your
+  existing Newtonsoft version keeps working untouched. The `netstandard2.0`
+  and `net8.0` builds use `System.Text.Json` and don't reference Newtonsoft
+  at all.
 - **Synchronous code is fine.** All calls are async, but
   `.GetAwaiter().GetResult()` won't deadlock on the ASP.NET/WinForms
   synchronization context, because the SDK awaits internally with
@@ -206,6 +208,24 @@ Details worth knowing on old Framework versions:
 The test suite runs against both the modern build and the `net45` build on the
 classic CLR, so the Framework path is exercised on every change, not just
 compiled.
+
+### "Could not load file or assembly 'Newtonsoft.Json'"
+
+If you see `Could not load file or assembly 'Newtonsoft.Json, Version=...'`
+(HRESULT 0x80131040) after installing, you're on an SDK version older than
+0.2.2 — update the package (`Update-Package Sendhiiv`) and it goes away.
+Still seeing it? Make sure `Web.config`/`App.config` has a binding redirect
+matching the Newtonsoft version in your `bin` folder:
+
+```xml
+<dependentAssembly>
+  <assemblyIdentity name="Newtonsoft.Json" publicKeyToken="30ad4fe6b2a6aeed" culture="neutral" />
+  <bindingRedirect oldVersion="0.0.0.0-13.0.0.0" newVersion="13.0.0.0" />
+</dependentAssembly>
+```
+
+(replace `13.0.0.0` with the major version you actually have — `Add-BindingRedirect`
+in the Package Manager Console generates this for you).
 
 ## What a successful send returns
 

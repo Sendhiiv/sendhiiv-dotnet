@@ -9,7 +9,7 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 
     <PackageId>Sendhiiv</PackageId>
-    <Version>0.2.1</Version>
+    <Version>0.2.2</Version>
     <Authors>Sendhiiv</Authors>
     <Company>Sendhiiv</Company>
     <Description>Official .NET SDK for the Sendhiiv email API — send transactional email with one call. Works on .NET Framework 4.5+ and all modern .NET.</Description>
@@ -25,9 +25,13 @@
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
-  <!-- net45 predates System.Text.Json, so that target serializes with Newtonsoft. -->
+  <!-- net45 predates System.Text.Json, so that target serializes with Newtonsoft.
+       Compiled against 9.0.1 (the lowest widely-deployed version) on purpose:
+       old Framework apps pin Newtonsoft with binding redirects, and referencing
+       a low version means their existing redirect covers us — no
+       "Could not load file or assembly Newtonsoft.Json" at runtime. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net45'">
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
     <Reference Include="System.Net.Http" />
   </ItemGroup>
 

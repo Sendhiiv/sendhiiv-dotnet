@@ -20,6 +20,10 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
     <Reference Include="System.Net.Http" />
+    <!-- Deliberately newer than the 9.0.1 the library compiles against:
+         verifies the customer topology (old reference + newer Newtonsoft via
+         binding redirect) that caused the 0x80131040 load error. -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <ItemGroup>

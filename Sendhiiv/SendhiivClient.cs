@@ -109,7 +109,7 @@ namespace Sendhiiv
                         Content = new StringContent(json, Encoding.UTF8, "application/json"),
                     };
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-                    request.Headers.UserAgent.ParseAdd("sendhiiv-dotnet/0.2.1");
+                    request.Headers.UserAgent.ParseAdd("sendhiiv-dotnet/0.2.2");
 
                     try
                     {
