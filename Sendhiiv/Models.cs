@@ -1,14 +1,22 @@
 using System.Collections.Generic;
-#if NET45
-// Newtonsoft's [JsonProperty("...")] plays the same role as [JsonPropertyName("...")],
-// so the net45 build reuses the annotations below via this alias.
-using JsonPropertyNameAttribute = Newtonsoft.Json.JsonPropertyAttribute;
-#else
+#if !NET45
 using System.Text.Json.Serialization;
 #endif
 
 namespace Sendhiiv
 {
+#if NET45
+    // The net45 build serializes via hand-written mapping in Net45Json.cs
+    // (zero package dependencies), so this attribute is a compile-time no-op
+    // that lets the annotations below stay identical across all targets.
+    [System.AttributeUsage(System.AttributeTargets.Property)]
+    internal sealed class JsonPropertyNameAttribute : System.Attribute
+    {
+        public JsonPropertyNameAttribute(string name) { Name = name; }
+        public string Name { get; }
+    }
+#endif
+
     /// <summary>Parameters for sending a message via POST /api/v1/messages.</summary>
     public class SendMessageParams
     {

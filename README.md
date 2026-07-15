@@ -1,10 +1,10 @@
 # Sendhiiv .NET SDK
 
 Official .NET client for the [Sendhiiv](https://sendhiiv.com) email API.
-Works on **.NET Framework 4.5+**, .NET 6/8+, and Mono — a dedicated `net45`
-build covers classic Framework apps back to 2012, alongside `netstandard2.0`
-and `net8.0` builds for everything newer. NuGet picks the right one
-automatically.
+Works on **.NET Framework 4.5+**, .NET 6/8+, and Mono. On .NET Framework the
+package has **zero dependencies** — installing it never adds, upgrades, or
+conflicts with Newtonsoft.Json or anything else in your project. Modern
+targets use `System.Text.Json`. NuGet picks the right build automatically.
 
 ```
 dotnet add package Sendhiiv
@@ -184,22 +184,20 @@ The SDK never disposes an `HttpClient` you pass in — lifetime stays yours.
 
 Nothing special is required — `Install-Package Sendhiiv` works in Framework
 projects from 4.5 up, including old ASP.NET MVC / Web API / WebForms apps.
-NuGet picks the right build: 4.5–4.6.1 projects get the `net45` build,
-4.6.2+ gets `netstandard2.0`.
+Every Framework project (4.5 through 4.8) gets the dedicated `net45` build.
 
 Details worth knowing on old Framework versions:
 
+- **Zero dependencies, on purpose.** Legacy apps break when a package forces
+  a Newtonsoft.Json upgrade, so the Framework build doesn't use Newtonsoft at
+  all — it serializes with the framework's built-in serializer
+  (`System.Web.Extensions`, already on every machine). Installing `Sendhiiv`
+  adds exactly one entry to your `packages.config`: `Sendhiiv`. Whatever
+  JSON library your app uses, at whatever version, stays untouched.
 - **TLS is handled for you.** .NET 4.5 negotiates TLS 1.0 by default, which
-  the API rejects. The `net45` build enables TLS 1.2 itself the first time
+  the API rejects. The Framework build enables TLS 1.2 itself the first time
   you create a `SendhiivClient`, so sends work without touching
   `ServicePointManager` or the registry.
-- **The `net45` build depends on `Newtonsoft.Json`** (9.0.1 or newer — any
-  version your app already uses is fine), since `System.Text.Json` doesn't
-  exist there. It's compiled against 9.0.1 deliberately, so the binding
-  redirect already present in a typical Framework app covers it and your
-  existing Newtonsoft version keeps working untouched. The `netstandard2.0`
-  and `net8.0` builds use `System.Text.Json` and don't reference Newtonsoft
-  at all.
 - **Synchronous code is fine.** All calls are async, but
   `.GetAwaiter().GetResult()` won't deadlock on the ASP.NET/WinForms
   synchronization context, because the SDK awaits internally with
@@ -213,19 +211,11 @@ compiled.
 
 If you see `Could not load file or assembly 'Newtonsoft.Json, Version=...'`
 (HRESULT 0x80131040) after installing, you're on an SDK version older than
-0.2.2 — update the package (`Update-Package Sendhiiv`) and it goes away.
-Still seeing it? Make sure `Web.config`/`App.config` has a binding redirect
-matching the Newtonsoft version in your `bin` folder:
-
-```xml
-<dependentAssembly>
-  <assemblyIdentity name="Newtonsoft.Json" publicKeyToken="30ad4fe6b2a6aeed" culture="neutral" />
-  <bindingRedirect oldVersion="0.0.0.0-13.0.0.0" newVersion="13.0.0.0" />
-</dependentAssembly>
-```
-
-(replace `13.0.0.0` with the major version you actually have — `Add-BindingRedirect`
-in the Package Manager Console generates this for you).
+0.3.0 — those briefly depended on Newtonsoft. Update the package
+(`Update-Package Sendhiiv`) and the error is gone for good: 0.3.0+ has no
+Newtonsoft reference at all. If the old SDK version upgraded Newtonsoft in
+your project and that upgrade caused problems elsewhere, you're free to roll
+Newtonsoft back to the version you had — this package no longer cares.
 
 ## What a successful send returns
 

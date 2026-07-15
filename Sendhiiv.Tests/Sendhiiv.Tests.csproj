@@ -20,9 +20,9 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
     <Reference Include="System.Net.Http" />
-    <!-- Deliberately newer than the 9.0.1 the library compiles against:
-         verifies the customer topology (old reference + newer Newtonsoft via
-         binding redirect) that caused the 0x80131040 load error. -->
+    <!-- Present on purpose: proves the SDK runs inside an app that uses any
+         Newtonsoft version. The net45 build has zero JSON dependencies
+         (framework JavaScriptSerializer), so nothing here can conflict. -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 

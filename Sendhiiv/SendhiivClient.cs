@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 #if NET45
 using System.Net;
-using Newtonsoft.Json;
 #else
 using System.Text.Json;
 #endif
@@ -45,11 +44,6 @@ namespace Sendhiiv
     public class SendhiivClient
     {
 #if NET45
-        private static readonly JsonSerializerSettings JsonOptions = new JsonSerializerSettings
-        {
-            NullValueHandling = NullValueHandling.Ignore,
-        };
-
         static SendhiivClient()
         {
             // .NET Framework 4.5 negotiates TLS 1.0 by default and the API only
@@ -90,7 +84,7 @@ namespace Sendhiiv
             SendMessageParams message, CancellationToken cancellationToken)
         {
 #if NET45
-            var json = JsonConvert.SerializeObject(message, JsonOptions);
+            var json = Net45Json.Serialize(message);
 #else
             var json = JsonSerializer.Serialize(message, JsonOptions);
 #endif
@@ -109,7 +103,7 @@ namespace Sendhiiv
                         Content = new StringContent(json, Encoding.UTF8, "application/json"),
                     };
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-                    request.Headers.UserAgent.ParseAdd("sendhiiv-dotnet/0.2.2");
+                    request.Headers.UserAgent.ParseAdd("sendhiiv-dotnet/0.3.0");
 
                     try
                     {
@@ -172,18 +166,18 @@ namespace Sendhiiv
 
         private static T? SafeDeserialize<T>(string body) where T : class
         {
+#if NET45
+            return Net45Json.Deserialize<T>(body);
+#else
             try
             {
-#if NET45
-                return JsonConvert.DeserializeObject<T>(body, JsonOptions);
-#else
                 return JsonSerializer.Deserialize<T>(body, JsonOptions);
-#endif
             }
             catch (JsonException)
             {
                 return null;
             }
+#endif
         }
     }
 

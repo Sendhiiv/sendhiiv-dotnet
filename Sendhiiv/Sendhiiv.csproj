@@ -9,10 +9,10 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 
     <PackageId>Sendhiiv</PackageId>
-    <Version>0.2.2</Version>
+    <Version>0.3.0</Version>
     <Authors>Sendhiiv</Authors>
     <Company>Sendhiiv</Company>
-    <Description>Official .NET SDK for the Sendhiiv email API — send transactional email with one call. Works on .NET Framework 4.5+ and all modern .NET.</Description>
+    <Description>Official .NET SDK for the Sendhiiv email API — send transactional email with one call. Works on .NET Framework 4.5+ and all modern .NET. Zero dependencies on .NET Framework: installing it never adds or upgrades Newtonsoft.Json or any other package.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://sendhiiv.com/docs/api</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Sendhiiv/sendhiiv-dotnet</RepositoryUrl>
@@ -25,14 +25,14 @@
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
-  <!-- net45 predates System.Text.Json, so that target serializes with Newtonsoft.
-       Compiled against 9.0.1 (the lowest widely-deployed version) on purpose:
-       old Framework apps pin Newtonsoft with binding redirects, and referencing
-       a low version means their existing redirect covers us — no
-       "Could not load file or assembly Newtonsoft.Json" at runtime. -->
+  <!-- The net45 build has NO package dependencies on purpose. Legacy Framework
+       apps break when anything touches their Newtonsoft.Json version, so this
+       build serializes with the framework's built-in JavaScriptSerializer
+       (System.Web.Extensions, GAC) via Net45Json.cs — installing the SDK can
+       never add, upgrade, or conflict with any package in the host app. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net45'">
-    <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
     <Reference Include="System.Net.Http" />
+    <Reference Include="System.Web.Extensions" />
   </ItemGroup>
 
   <ItemGroup>
