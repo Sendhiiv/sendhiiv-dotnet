@@ -9,10 +9,10 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 
     <PackageId>Sendhiiv</PackageId>
-    <Version>0.3.0</Version>
+    <Version>0.3.1</Version>
     <Authors>Sendhiiv</Authors>
     <Company>Sendhiiv</Company>
-    <Description>Official .NET SDK for the Sendhiiv email API — send transactional email with one call. Works on .NET Framework 4.5+ and all modern .NET. Zero dependencies on .NET Framework: installing it never adds or upgrades Newtonsoft.Json or any other package.</Description>
+    <Description>Official .NET SDK for the Sendhiiv email API — send transactional email with one call. Runs on .NET 10, 9, 8, 6, .NET Core, Mono, and .NET Framework 4.5 through 4.8. Zero dependencies on .NET Framework: installing it never adds or upgrades Newtonsoft.Json or any other package.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://sendhiiv.com/docs/api</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Sendhiiv/sendhiiv-dotnet</RepositoryUrl>

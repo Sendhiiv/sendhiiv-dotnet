@@ -1,10 +1,23 @@
 # Sendhiiv .NET SDK
 
 Official .NET client for the [Sendhiiv](https://sendhiiv.com) email API.
-Works on **.NET Framework 4.5+**, .NET 6/8+, and Mono. On .NET Framework the
-package has **zero dependencies** — installing it never adds, upgrades, or
-conflicts with Newtonsoft.Json or anything else in your project. Modern
-targets use `System.Text.Json`. NuGet picks the right build automatically.
+On .NET Framework the package has **zero dependencies** — installing it never
+adds, upgrades, or conflicts with Newtonsoft.Json or anything else in your
+project. Modern targets use `System.Text.Json`.
+
+## Supported runtimes
+
+| Your project | Supported | Build NuGet installs |
+| --- | --- | --- |
+| .NET 10, 9, 8 | yes | `net8.0` |
+| .NET 6, 7, .NET Core 2.0+ | yes | `netstandard2.0` |
+| .NET Framework 4.5 – 4.8 | yes | `net45` (no dependencies) |
+| Mono, Xamarin, Unity | yes | `netstandard2.0` |
+
+The package ships three builds and NuGet picks the right one for you. .NET 9,
+10, and future releases run the `net8.0` build — newer .NET runtimes load
+assemblies built for earlier versions, which is why the package page lists
+only the compiled targets while remaining compatible with everything above.
 
 ```
 dotnet add package Sendhiiv
