@@ -1,0 +1,63 @@
+# Publishes to nuget.org when main changes.
+#
+# No API key is stored anywhere. The job asks GitHub for a short-lived OIDC
+# token, nuget.org checks it against the trusted publishing policy for this
+# repository and hands back a key that expires in an hour. Nothing to rotate,
+# nothing to leak.
+#
+# The policy on nuget.org must name this file as `publish.yml` — the file name
+# only, not the path — or the token exchange is refused.
+name: Publish to NuGet
+
+on:
+  push:
+    branches: [main]
+  # Lets you re-run a publish by hand without pushing anything.
+  workflow_dispatch:
+
+# Two merges in quick succession must not race each other to the registry.
+concurrency:
+  group: nuget-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required: this is what mints the OIDC token
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      # net48 needs Mono, which the Linux runner does not have. net8.0 exercises
+      # the same client code; the Framework path is compile-checked by the pack
+      # step below, which builds all three target frameworks.
+      - name: Test
+        run: dotnet test Sendhiiv.Tests/Sendhiiv.Tests.csproj -c Release -f net8.0 --nologo
+
+      - name: Pack
+        run: dotnet pack Sendhiiv/Sendhiiv.csproj -c Release -o artifacts --nologo
+
+      # Request the key immediately before pushing: it is valid for one hour and
+      # each token may be exchanged exactly once.
+      - name: NuGet login
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER || 'success_ogbulu' }}
+
+      # --skip-duplicate is what makes "publish on every merge to main" safe: a
+      # merge that did not bump <Version> finds that version already published
+      # and exits cleanly instead of failing the build. To release, bump the
+      # version in Sendhiiv.csproj; to merge anything else, change nothing.
+      - name: Push
+        run: >
+          dotnet nuget push artifacts/*.nupkg
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
