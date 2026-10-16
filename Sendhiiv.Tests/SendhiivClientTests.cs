@@ -230,4 +230,49 @@ public class SendhiivClientTests
             HttpRequestMessage request, CancellationToken cancellationToken)
             => throw new HttpRequestException("connection refused");
     }
+
+    [Fact]
+    public async Task ExposesAMessageIdPerRecipient()
+    {
+        var (client, handler) = Make();
+        handler.Enqueue(HttpStatusCode.Accepted, """
+            {
+              "success": true,
+              "status": "queued",
+              "code": "QUEUED_FOR_DELIVERY",
+              "total": 2,
+              "data": [
+                { "id": "msg_aaaaaaaaaaaaaaaaaaaaaaaa", "to": "a@example.com" },
+                { "id": "msg_bbbbbbbbbbbbbbbbbbbbbbbb", "to": "b@example.com" }
+              ]
+            }
+            """);
+
+        var result = await client.Messages.SendAsync(new SendMessageParams
+        {
+            To = { "a@example.com", "b@example.com" },
+            Subject = "Hi",
+            Text = "Hi",
+        });
+
+        Assert.NotNull(result.Data);
+        Assert.Equal(2, result.Data!.Count);
+        Assert.Equal("msg_aaaaaaaaaaaaaaaaaaaaaaaa", result.Data[0].Id);
+        Assert.Equal("b@example.com", result.Data[1].To);
+    }
+
+    [Fact]
+    public async Task SendsIdempotencyKeyOnlyWhenGiven()
+    {
+        var (client, handler) = Make();
+        handler.Enqueue(HttpStatusCode.Accepted, QueuedJson);
+
+        await client.Messages.SendAsync(Message(), "order-5521");
+        Assert.True(handler.Calls[0].Request.Headers
+            .TryGetValues("Idempotency-Key", out var sentKeys));
+        Assert.Equal("order-5521", string.Join(",", sentKeys!));
+
+        await client.Messages.SendAsync(Message());
+        Assert.False(handler.Calls[1].Request.Headers.Contains("Idempotency-Key"));
+    }
 }

@@ -81,7 +81,8 @@ namespace Sendhiiv
         }
 
         internal async Task<SendMessageResponse> PostMessageAsync(
-            SendMessageParams message, CancellationToken cancellationToken)
+            SendMessageParams message, string? idempotencyKey,
+            CancellationToken cancellationToken)
         {
 #if NET45
             var json = Net45Json.Serialize(message);
@@ -103,7 +104,9 @@ namespace Sendhiiv
                         Content = new StringContent(json, Encoding.UTF8, "application/json"),
                     };
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-                    request.Headers.UserAgent.ParseAdd("sendhiiv-dotnet/0.3.1");
+                    request.Headers.UserAgent.ParseAdd("sendhiiv-dotnet/0.4.0");
+                    if (!string.IsNullOrEmpty(idempotencyKey))
+                        request.Headers.TryAddWithoutValidation("Idempotency-Key", idempotencyKey);
 
                     try
                     {
@@ -196,7 +199,22 @@ namespace Sendhiiv
             SendMessageParams message, CancellationToken cancellationToken = default)
         {
             if (message == null) throw new ArgumentNullException(nameof(message));
-            return _client.PostMessageAsync(message, cancellationToken);
+            return _client.PostMessageAsync(message, null, cancellationToken);
+        }
+
+        /// <summary>
+        /// Send a transactional email, safely retryable. If the request was
+        /// already accepted under this <paramref name="idempotencyKey"/>, the
+        /// original response is returned and nothing is sent again. Keys are
+        /// remembered for 24 hours; derive one from something stable in your own
+        /// system, such as an order id.
+        /// </summary>
+        public Task<SendMessageResponse> SendAsync(
+            SendMessageParams message, string idempotencyKey,
+            CancellationToken cancellationToken = default)
+        {
+            if (message == null) throw new ArgumentNullException(nameof(message));
+            return _client.PostMessageAsync(message, idempotencyKey, cancellationToken);
         }
     }
 }
