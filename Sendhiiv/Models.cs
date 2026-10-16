@@ -105,8 +105,34 @@ namespace Sendhiiv
         [JsonPropertyName("total")]
         public int Total { get; set; }
 
+        /// <summary>
+        /// One entry per accepted recipient, in request order. Each Id is what
+        /// every webhook event for that message carries as message_id.
+        /// </summary>
+        [JsonPropertyName("data")]
+        public List<AcceptedMessage>? Data { get; set; }
+
+        /// <summary>"drip" for a batched send, "test" for a sh_test_ key. Otherwise null.</summary>
+        [JsonPropertyName("mode")]
+        public string? Mode { get; set; }
+
         [JsonPropertyName("retry")]
         public RetryInfo? Retry { get; set; }
+    }
+
+    /// <summary>One recipient the API accepted, and the id assigned to it.</summary>
+    public class AcceptedMessage
+    {
+        /// <summary>Message id, e.g. "msg_6ad2009154c402f10b8caf8e". Store this.</summary>
+        [JsonPropertyName("id")]
+        public string? Id { get; set; }
+
+        [JsonPropertyName("to")]
+        public string? To { get; set; }
+
+        /// <summary>Test mode only: "delivered" or "suppressed".</summary>
+        [JsonPropertyName("status")]
+        public string? Status { get; set; }
     }
 
     /// <summary>Server-side delivery retry behavior.</summary>

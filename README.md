@@ -242,6 +242,7 @@ like this on the wire:
   "code": "QUEUED_FOR_DELIVERY",
   "message": "1 email(s) queued for delivery",
   "total": 1,
+  "data": [{ "id": "msg_6ad2009154c402f10b8caf8e", "to": "jane@example.com" }],
   "retry": { "automatic": true, "retryable_temporary_failures": true }
 }
 ```
@@ -249,14 +250,70 @@ like this on the wire:
 | Property | Meaning |
 | --- | --- |
 | `Success` | `true` on 202. |
-| `Status` | `"queued"`. |
-| `Code` | `"QUEUED_FOR_DELIVERY"`. |
+| `Status` | `"queued"`, or `"accepted"` for a test-mode send. |
+| `Code` | `"QUEUED_FOR_DELIVERY"`, or `"TEST_MODE_ACCEPTED"`. |
 | `Message` | Human-readable summary. |
-| `Total` | Number of recipients queued. |
+| `Total` | Number of recipients accepted. |
+| `Data` | One `AcceptedMessage` per recipient, in the order you listed them. |
+| `Mode` | `"drip"` for a batched send, `"test"` for a `sh_test_` key; otherwise null. |
 | `Retry` | Server-side behavior: Sendhiiv retries temporary delivery failures itself after queueing. |
 
-Queued means accepted for delivery, not delivered — delivery status shows up in
-your dashboard's activity log.
+**Store the `Id` on each entry in `Data`.** It is what every webhook event for
+that message carries as `message_id`, and what the status endpoint takes:
+
+```csharp
+var result = await sendhiiv.Messages.SendAsync(message);
+
+foreach (var accepted in result.Data!)
+{
+    _logger.LogInformation("Queued {Id} for {To}", accepted.Id, accepted.To);
+    await _receipts.RecordMessageIdAsync(accepted.To!, accepted.Id!);
+}
+```
+
+Queued means accepted for delivery, not delivered — delivery status arrives on
+your webhook endpoint, or from `GET /api/v1/messages/{id}`, which this SDK does
+not wrap yet (call it with `HttpClient` for now).
+
+## Idempotency
+
+If a send is accepted but the response never reaches you — a timeout, a dropped
+connection — retrying blind would deliver the message twice. Pass an
+idempotency key and the retry is safe:
+
+```csharp
+await sendhiiv.Messages.SendAsync(message, $"receipt-{order.Id}");
+```
+
+A retry with the same key returns the **original** response, with the same
+message ids, and sends nothing further. Keys are remembered for 24 hours, so
+derive them from something stable in your own system — an order id, an invoice
+number, a job id — rather than a fresh `Guid` per attempt.
+
+Reusing a key with a different message throws a `SendhiivException` with code
+`IDEMPOTENCY_KEY_REUSED` (HTTP 422). A request that was *rejected* frees its key
+immediately, so you can fix it and retry with the same one.
+
+## Test mode
+
+A key beginning `sh_test_` runs every check a live send does — plan, required
+fields, template rendering, attachment limits, sender and domain resolution,
+your suppression list, content compliance — and then stops before delivery.
+
+```csharp
+var sendhiiv = new SendhiivClient(config["Sendhiiv:TestKey"]); // sh_test_...
+
+var result = await sendhiiv.Messages.SendAsync(message);
+// result.Mode   == "test"
+// result.Status == "accepted"
+// result.Data   holds real ids you can look up
+```
+
+Nothing is delivered, no quota is spent, and test sends stay out of your
+delivery statistics and sender reputation — which makes this safe to use in
+integration tests and staging. Your webhooks still fire, with `"mode": "test"`
+in the payload, so a handler can be verified end to end. Create a test key from
+the dashboard by choosing the Test environment.
 
 ## Error handling
 
@@ -306,8 +363,13 @@ catch (SendhiivException ex)
 The SDK retries **only** HTTP 429 responses (honoring `Retry-After`), because
 the rate limiter runs before anything is queued — a retry can never
 double-send. Network errors and 5xx responses are not retried automatically,
-since the message may already have been accepted. Sendhiiv itself retries
-temporary delivery failures server-side after a message is queued.
+since the message may already have been accepted.
+
+If you want those retried too — through Polly, or a hosted-service retry loop —
+pass an idempotency key: with one, a repeated request returns the original
+response instead of sending again. Sendhiiv also retries temporary *delivery*
+failures server-side after a message is queued, which is a separate thing from
+retrying the API call.
 
 All the knobs live on `SendhiivClientOptions`:
 

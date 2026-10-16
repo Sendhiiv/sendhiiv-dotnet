@@ -79,6 +79,7 @@ namespace Sendhiiv
                 Code = GetString(d, "code"),
                 Message = GetString(d, "message"),
                 Total = GetInt(d, "total"),
+                Mode = GetString(d, "mode"),
             };
             if (Get(d, "retry") is Dictionary<string, object> retry)
             {
@@ -87,6 +88,23 @@ namespace Sendhiiv
                     Automatic = GetBool(retry, "automatic"),
                     RetryableTemporaryFailures = GetBool(retry, "retryable_temporary_failures"),
                 };
+            }
+            if (Get(d, "data") is IEnumerable accepted && !(accepted is string))
+            {
+                var messages = new List<AcceptedMessage>();
+                foreach (var item in accepted)
+                {
+                    if (item is Dictionary<string, object> entry)
+                    {
+                        messages.Add(new AcceptedMessage
+                        {
+                            Id = GetString(entry, "id"),
+                            To = GetString(entry, "to"),
+                            Status = GetString(entry, "status"),
+                        });
+                    }
+                }
+                response.Data = messages;
             }
             return response;
         }
