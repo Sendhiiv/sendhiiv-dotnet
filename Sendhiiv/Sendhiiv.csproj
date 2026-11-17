@@ -17,7 +17,7 @@
     <PackageProjectUrl>https://sendhiiv.com/docs/api</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Sendhiiv/sendhiiv-dotnet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>email;transactional-email;smtp;api;sendhiiv;mail;sms;bulk-sms;nigeria</PackageTags>
+    <PackageTags>email;transactional-email;smtp;api;sendhiiv;mail;sms;bulk-sms;nigeria;otp;verification</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
