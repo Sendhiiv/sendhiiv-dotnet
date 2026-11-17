@@ -76,6 +76,9 @@ namespace Sendhiiv
         /// <summary>SMS: send, look up, list, balance.</summary>
         public SmsResource Sms { get; }
 
+        /// <summary>One-time codes by SMS: send, check, look up, cancel.</summary>
+        public VerifyResource Verify { get; }
+
         public SendhiivClient(string apiKey, SendhiivClientOptions? options = null)
         {
             if (string.IsNullOrWhiteSpace(apiKey))
@@ -89,6 +92,7 @@ namespace Sendhiiv
             _http = options.HttpClient ?? new HttpClient();
             Messages = new MessagesResource(this);
             Sms = new SmsResource(this);
+            Verify = new VerifyResource(this);
         }
 
         internal async Task<SendMessageResponse> PostMessageAsync(
@@ -107,12 +111,14 @@ namespace Sendhiiv
             return ParseOrThrow(result, SafeDeserialize<SendMessageResponse>);
         }
 
-        internal string SerializeSms(SendSmsParams sms)
+        internal string SerializeSms(SendSmsParams sms) => SerializeBody(sms);
+
+        internal string SerializeBody(object body)
         {
 #if NET45
-            return Net45Json.Serialize(sms);
+            return Net45Json.SerializeBody(body);
 #else
-            return JsonSerializer.Serialize(sms, JsonOptions);
+            return JsonSerializer.Serialize(body, body.GetType(), JsonOptions);
 #endif
         }
 

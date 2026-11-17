@@ -371,6 +371,45 @@ Console.WriteLine($"₦{wallet.Balance!.Major:N2} at ₦{wallet.Tier!.PricePerPa
 
 **Errors** throw `SendhiivException` with a stable `Code`: `SMS_INSUFFICIENT_BALANCE` (402; the shortfall is in `ResponseBody`), `SMS_INVALID_RECIPIENTS`, `SMS_MESSAGE_TOO_LONG`, `SMS_SENDER_ID_NOT_APPROVED`, `SMS_DAILY_LIMIT`, `SMS_NOT_ENABLED`, `SMS_API_NOT_ON_TIER`, `RATE_LIMITED`.
 
+## Verify (one-time codes)
+
+Send a login or confirmation code by SMS and check what the user types. Sendhiiv creates the code, texts it, expires it and checks it, so you never generate or store codes yourself.
+
+```csharp
+// 1. Text a code to the user
+var v = await sendhiiv.Verify.SendAsync(new StartVerificationParams
+{
+    To = "08031234567",
+    AppName = "Lagos Bloom",
+});
+// SMS: "418302 is your Lagos Bloom verification code. It expires in 10 minutes. Don't share it with anyone."
+HttpContext.Session.SetString("verificationId", v.Id!);
+
+// 2. Check what they typed
+var check = await sendhiiv.Verify.CheckAsync(new CheckVerificationParams
+{
+    Id = HttpContext.Session.GetString("verificationId"),
+    Code = typedCode,
+});
+if (!check.Valid) return Unauthorized(check.Result);   // "incorrect", "expired", …
+```
+
+You can check by number instead of keeping the id: set `To` instead of `Id` to check the latest code sent to that number.
+
+| Property | Notes |
+|---|---|
+| `To` | The phone number. |
+| `AppName` | Shown in the SMS. Up to 30 characters. |
+| `CodeLength` | 4–8 digits. Default 6. |
+| `ExpiresInMinutes` | 1–30. Default 10. |
+| `Message` | Your own text. Must include `{code}`; may use `{minutes}` and `{app_name}`. |
+
+`check.Result` is `approved` (right code, `Valid` is true, works once), `incorrect` (see `AttemptsRemaining`), `max_attempts` (5 wrong tries), `expired`, `canceled` (a newer code was sent) or `already_approved`.
+
+**Built-in protection.** Codes are stored only as a secure hash, so even Sendhiiv can't read them. Each code allows 5 tries, a new code replaces the old one, and a number can get at most 3 codes every 10 minutes. Each code costs one transactional SMS. `CheckAsync` is never retried automatically, because each retry would use up one of the user's attempts.
+
+**Test mode.** With a `sh_test_` key nothing is sent or charged, and the code is always `000000`.
+
 ## Error handling
 
 Every non-2xx response throws a `SendhiivException`. It carries:
@@ -418,7 +457,7 @@ catch (SendhiivException ex)
 
 - **HTTP 429** is always retried (honoring `Retry-After`), because the rate
   limiter runs before anything is queued: a retry can never double-send.
-- **SMS calls** (`Sms.*`) are also retried on timeouts, network errors and
+- **SMS calls and code sends** (`Sms.*`, `Verify.SendAsync`, `GetAsync`, `CancelAsync`) are also retried on timeouts, network errors and
   5xx. SMS sends always carry an idempotency key, so a retry returns the
   original response instead of sending again.
 - **Email sends** (`Messages.SendAsync`) are not retried on network errors or

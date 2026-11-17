@@ -61,6 +61,33 @@ namespace Sendhiiv
             return NewSerializer().Serialize(payload);
         }
 
+        internal static string SerializeBody(object body)
+        {
+            if (body is SendSmsParams sms) return Serialize(sms);
+            var payload = new Dictionary<string, object>();
+            if (body is StartVerificationParams v)
+            {
+                payload["to"] = v.To;
+                if (v.AppName != null) payload["app_name"] = v.AppName;
+                if (v.CodeLength.HasValue) payload["code_length"] = v.CodeLength.Value;
+                if (v.ExpiresInMinutes.HasValue) payload["expires_in_minutes"] = v.ExpiresInMinutes.Value;
+                if (v.Message != null) payload["message"] = v.Message;
+                if (v.Reference != null) payload["reference"] = v.Reference;
+                if (v.Metadata != null) payload["metadata"] = v.Metadata;
+            }
+            else if (body is CheckVerificationParams c)
+            {
+                if (c.Id != null) payload["id"] = c.Id;
+                if (c.To != null) payload["to"] = c.To;
+                payload["code"] = c.Code;
+            }
+            else
+            {
+                throw new ArgumentException("Unsupported request body: " + body.GetType().Name);
+            }
+            return NewSerializer().Serialize(payload);
+        }
+
         private static Dictionary<string, object>? Parse(string body)
         {
             try { return NewSerializer().Deserialize<Dictionary<string, object>>(body); }
@@ -76,6 +103,12 @@ namespace Sendhiiv
             if (typeof(T) == typeof(SmsBatch)) return (T)(object)MapSmsBatch(data);
             if (typeof(T) == typeof(Sms)) return (T)(object)MapSms(data);
             if (typeof(T) == typeof(SmsBalance)) return (T)(object)MapSmsBalance(data);
+            if (typeof(T) == typeof(VerificationCheck)) return (T)(object)MapVerification(data, new VerificationCheck
+            {
+                Valid = GetBool(data, "valid"),
+                Result = GetString(data, "result"),
+            });
+            if (typeof(T) == typeof(Verification)) return (T)(object)MapVerification(data, new Verification());
             return null;
         }
 
@@ -164,6 +197,24 @@ namespace Sendhiiv
                     RemainingPages = GetInt(limit, "remaining_pages"),
                 };
             return balance;
+        }
+
+        private static T MapVerification<T>(Dictionary<string, object> d, T v) where T : Verification
+        {
+            v.Id = GetString(d, "id");
+            v.To = GetString(d, "to");
+            v.Status = GetString(d, "status");
+            v.Attempts = GetInt(d, "attempts");
+            v.AttemptsRemaining = GetInt(d, "attempts_remaining");
+            v.ExpiresAt = GetString(d, "expires_at");
+            v.ApprovedAt = GetString(d, "approved_at");
+            v.Cost = MapMoney(Get(d, "cost"));
+            v.Reference = GetString(d, "reference");
+            v.Test = GetBool(d, "test");
+            v.CreatedAt = GetString(d, "created_at");
+            if (Get(d, "sms") is Dictionary<string, object> sms)
+                v.Sms = new VerificationSms { Id = GetString(sms, "id"), Status = GetString(sms, "status"), Error = GetString(sms, "error") };
+            return v;
         }
 
         private static long GetLong(Dictionary<string, object> d, string key)
