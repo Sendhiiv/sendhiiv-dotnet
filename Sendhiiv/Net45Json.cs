@@ -49,6 +49,133 @@ namespace Sendhiiv
             return NewSerializer().Serialize(payload);
         }
 
+        internal static string Serialize(SendSmsParams m)
+        {
+            var payload = new Dictionary<string, object>();
+            payload["to"] = m.To;
+            payload["message"] = m.Message;
+            if (m.Type != null) payload["type"] = m.Type;
+            if (m.From != null) payload["from"] = m.From;
+            if (m.Reference != null) payload["reference"] = m.Reference;
+            if (m.Metadata != null) payload["metadata"] = m.Metadata;
+            return NewSerializer().Serialize(payload);
+        }
+
+        private static Dictionary<string, object>? Parse(string body)
+        {
+            try { return NewSerializer().Deserialize<Dictionary<string, object>>(body); }
+            catch (ArgumentException) { return null; }
+            catch (InvalidOperationException) { return null; }
+        }
+
+        /// <summary>The "data" object of { success, data }, mapped to T. Null when unusable.</summary>
+        internal static T? DeserializeData<T>(string body) where T : class
+        {
+            var parsed = Parse(body);
+            if (parsed == null || !(Get(parsed, "data") is Dictionary<string, object> data)) return null;
+            if (typeof(T) == typeof(SmsBatch)) return (T)(object)MapSmsBatch(data);
+            if (typeof(T) == typeof(Sms)) return (T)(object)MapSms(data);
+            if (typeof(T) == typeof(SmsBalance)) return (T)(object)MapSmsBalance(data);
+            return null;
+        }
+
+        internal static SmsPage? DeserializeSmsPage(string body)
+        {
+            var parsed = Parse(body);
+            if (parsed == null) return null;
+            var page = new SmsPage { HasMore = GetBool(parsed, "has_more"), NextCursor = GetString(parsed, "next_cursor") };
+            foreach (var item in Items(parsed, "data")) page.Data.Add(MapSms(item));
+            return page;
+        }
+
+        private static IEnumerable<Dictionary<string, object>> Items(Dictionary<string, object> d, string key)
+        {
+            if (Get(d, key) is IEnumerable list && !(list is string))
+                foreach (var item in list)
+                    if (item is Dictionary<string, object> entry) yield return entry;
+        }
+
+        private static Money? MapMoney(object? value)
+        {
+            if (!(value is Dictionary<string, object> d)) return null;
+            return new Money { Amount = GetLong(d, "amount"), Currency = GetString(d, "currency") };
+        }
+
+        private static SmsBatch MapSmsBatch(Dictionary<string, object> d)
+        {
+            var batch = new SmsBatch
+            {
+                BatchId = GetString(d, "batch_id"),
+                Type = GetString(d, "type"),
+                From = GetString(d, "from"),
+                Reference = GetString(d, "reference"),
+                Recipients = GetInt(d, "recipients"),
+                PagesPerMessage = GetInt(d, "pages_per_message"),
+                Encoding = GetString(d, "encoding"),
+                Cost = MapMoney(Get(d, "cost")),
+                Balance = MapMoney(Get(d, "balance")),
+                Test = GetBool(d, "test"),
+            };
+            foreach (var m in Items(d, "messages"))
+                batch.Messages.Add(new SmsAccepted { Id = GetString(m, "id"), To = GetString(m, "to"), Status = GetString(m, "status"), Pages = GetInt(m, "pages") });
+            foreach (var r in Items(d, "rejected"))
+                batch.Rejected.Add(new SmsRejected { To = GetString(r, "to"), Reason = GetString(r, "reason") });
+            return batch;
+        }
+
+        private static Sms MapSms(Dictionary<string, object> d) => new Sms
+        {
+            Id = GetString(d, "id"),
+            BatchId = GetString(d, "batch_id"),
+            To = GetString(d, "to"),
+            From = GetString(d, "from"),
+            Message = GetString(d, "message"),
+            Type = GetString(d, "type"),
+            Status = GetString(d, "status"),
+            Pages = GetInt(d, "pages"),
+            Cost = MapMoney(Get(d, "cost")),
+            Error = GetString(d, "error"),
+            Reference = GetString(d, "reference"),
+            Test = GetBool(d, "test"),
+            CreatedAt = GetString(d, "created_at"),
+            SentAt = GetString(d, "sent_at"),
+            DeliveredAt = GetString(d, "delivered_at"),
+            FailedAt = GetString(d, "failed_at"),
+        };
+
+        private static SmsBalance MapSmsBalance(Dictionary<string, object> d)
+        {
+            var balance = new SmsBalance { Balance = MapMoney(Get(d, "balance")), FreeSending = GetBool(d, "free_sending") };
+            if (Get(d, "tier") is Dictionary<string, object> tier)
+            {
+                balance.Tier = new SmsTier { Name = GetString(tier, "name") };
+                if (Get(tier, "price_per_page") is Dictionary<string, object> prices)
+                    balance.Tier.PricePerPage = new SmsPrices
+                    {
+                        Transactional = MapMoney(Get(prices, "transactional")),
+                        Promotional = MapMoney(Get(prices, "promotional")),
+                    };
+            }
+            if (Get(d, "daily_limit") is Dictionary<string, object> limit)
+                balance.DailyLimit = new SmsDailyLimit
+                {
+                    Pages = GetInt(limit, "pages"),
+                    UsedPages = GetInt(limit, "used_pages"),
+                    RemainingPages = GetInt(limit, "remaining_pages"),
+                };
+            return balance;
+        }
+
+        private static long GetLong(Dictionary<string, object> d, string key)
+        {
+            var value = Get(d, key);
+            if (!(value is IConvertible)) return 0;
+            try { return Convert.ToInt64(value); }
+            catch (FormatException) { return 0; }
+            catch (OverflowException) { return 0; }
+            catch (InvalidCastException) { return 0; }
+        }
+
         /// <summary>Returns null (never throws) when the body isn't usable JSON.</summary>
         internal static T? Deserialize<T>(string body) where T : class
         {

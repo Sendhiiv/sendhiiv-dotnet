@@ -9,15 +9,15 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 
     <PackageId>Sendhiiv</PackageId>
-    <Version>0.4.0</Version>
+    <Version>0.5.0</Version>
     <Authors>Sendhiiv</Authors>
     <Company>Sendhiiv</Company>
-    <Description>Official .NET SDK for the Sendhiiv email API — send transactional email with one call. Runs on .NET 10, 9, 8, 6, .NET Core, Mono, and .NET Framework 4.5 through 4.8. Zero dependencies on .NET Framework: installing it never adds or upgrades Newtonsoft.Json or any other package.</Description>
+    <Description>Official .NET SDK for the Sendhiiv API — send transactional email and SMS with one call. Runs on .NET 10, 9, 8, 6, .NET Core, Mono, and .NET Framework 4.5 through 4.8. Zero dependencies on .NET Framework: installing it never adds or upgrades Newtonsoft.Json or any other package.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://sendhiiv.com/docs/api</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Sendhiiv/sendhiiv-dotnet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>email;transactional-email;smtp;api;sendhiiv;mail</PackageTags>
+    <PackageTags>email;transactional-email;smtp;api;sendhiiv;mail;sms;bulk-sms;nigeria</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 

@@ -315,6 +315,62 @@ integration tests and staging. Your webhooks still fire, with `"mode": "test"`
 in the payload, so a handler can be verified end to end. Create a test key from
 the dashboard by choosing the Test environment.
 
+## SMS
+
+Send SMS to Nigerian numbers with the same API key. Each send is charged from your SMS balance at your tier's price per page.
+
+```csharp
+var batch = await sendhiiv.Sms.SendAsync(new SendSmsParams
+{
+    To = { "08031234567", "+2349012345678" },   // one number or up to 1,000
+    Message = "Your Lagos Bloom code is 418302",
+    Reference = "order_4521",                   // optional: your own id
+});
+
+foreach (var sms in batch.Messages) Console.WriteLine($"{sms.Id} → {sms.To}");
+foreach (var bad in batch.Rejected) Console.WriteLine($"Skipped {bad.To}: {bad.Reason}");   // not sent, not charged
+Console.WriteLine($"Cost: ₦{batch.Cost!.Major:0.00}");                                     // Amount is in kobo
+```
+
+| Property | Notes |
+|---|---|
+| `To` | One number or up to 1,000. `08031234567`, `8031234567` and `+2348031234567` all work. |
+| `Message` | Up to 6 pages. A page is 160 characters, or 70 if the message has emoji or ₦. |
+| `Type` | `"transactional"` (default) for OTPs, alerts and receipts; it reaches numbers on the DND list. `"promotional"` is cheaper, doesn't reach DND numbers, and networks hold it outside 8am–8pm. |
+| `From` | An approved sender ID on your account. Leave it null for the default. |
+| `Reference`, `Metadata` | Your own ids and data, returned with every message. |
+
+**Retries are safe.** Every `Sms.SendAsync` carries an idempotency key, one is generated if you don't pass it, so the SDK retries timeouts and server errors without texting or charging anyone twice. Pass your own to make retries across restarts safe too: `Sms.SendAsync(sms, idempotencyKey: order.Id)`.
+
+**Check on a message, list them, see your balance:**
+
+```csharp
+var sms = await sendhiiv.Sms.GetAsync("sms_6740a1b2c3d4e5f6a7b8c9d0");
+// sms.Status: "queued" | "sent" | "delivered" | "failed" | "rejected"
+
+var page = await sendhiiv.Sms.ListAsync(new SmsListParams { Status = "failed", Limit = 100 });
+while (true)
+{
+    foreach (var item in page.Data) Console.WriteLine($"{item.To}: {item.Error}");
+    if (!page.HasMore) break;
+    page = await sendhiiv.Sms.ListAsync(new SmsListParams { Status = "failed", Limit = 100, Cursor = page.NextCursor });
+}
+
+var wallet = await sendhiiv.Sms.GetBalanceAsync();
+Console.WriteLine($"₦{wallet.Balance!.Major:N2} at ₦{wallet.Tier!.PricePerPage!.Transactional!.Major:0.00} a page");
+```
+
+**Test mode.** With a `sh_test_` key, `Sms.SendAsync` runs every check and returns the real price, but sends nothing and charges nothing. These numbers act out each outcome:
+
+| Number | Result |
+|---|---|
+| `08000000001` | delivered |
+| `08000000002` | failed |
+| `08000000003` | rejected (DND) |
+| anything else | delivered |
+
+**Errors** throw `SendhiivException` with a stable `Code`: `SMS_INSUFFICIENT_BALANCE` (402; the shortfall is in `ResponseBody`), `SMS_INVALID_RECIPIENTS`, `SMS_MESSAGE_TOO_LONG`, `SMS_SENDER_ID_NOT_APPROVED`, `SMS_DAILY_LIMIT`, `SMS_NOT_ENABLED`, `SMS_API_NOT_ON_TIER`, `RATE_LIMITED`.
+
 ## Error handling
 
 Every non-2xx response throws a `SendhiivException`. It carries:
@@ -360,16 +416,17 @@ catch (SendhiivException ex)
 
 ## Retries and timeouts
 
-The SDK retries **only** HTTP 429 responses (honoring `Retry-After`), because
-the rate limiter runs before anything is queued — a retry can never
-double-send. Network errors and 5xx responses are not retried automatically,
-since the message may already have been accepted.
+- **HTTP 429** is always retried (honoring `Retry-After`), because the rate
+  limiter runs before anything is queued: a retry can never double-send.
+- **SMS calls** (`Sms.*`) are also retried on timeouts, network errors and
+  5xx. SMS sends always carry an idempotency key, so a retry returns the
+  original response instead of sending again.
+- **Email sends** (`Messages.SendAsync`) are not retried on network errors or
+  5xx, since the message may already have been accepted. To retry them,
+  through Polly or a hosted-service loop, pass an idempotency key.
 
-If you want those retried too — through Polly, or a hosted-service retry loop —
-pass an idempotency key: with one, a repeated request returns the original
-response instead of sending again. Sendhiiv also retries temporary *delivery*
-failures server-side after a message is queued, which is a separate thing from
-retrying the API call.
+Sendhiiv also retries temporary *delivery* failures server-side after a
+message is queued, which is a separate thing from retrying the API call.
 
 All the knobs live on `SendhiivClientOptions`:
 
@@ -377,7 +434,7 @@ All the knobs live on `SendhiivClientOptions`:
 var sendhiiv = new SendhiivClient(apiKey, new SendhiivClientOptions
 {
     Timeout = TimeSpan.FromSeconds(30), // per-request timeout (default 30s)
-    MaxRetries = 2,                     // 429 retries (default 2)
+    MaxRetries = 2,                     // retries per request (default 2)
     HttpClient = httpClientFromFactory, // optional: bring your own HttpClient
     BaseUrl = "https://api.sendhiiv.com/api/v1", // default; override for testing
 });
