@@ -317,7 +317,7 @@ the dashboard by choosing the Test environment.
 
 ## SMS
 
-Send SMS to Nigerian numbers with the same API key. Each send is charged from your SMS balance at your tier's price per page.
+Send SMS with the same API key. See the API docs for the countries we send to. Each send is charged from your SMS balance at your tier's price per page.
 
 ```csharp
 var batch = await sendhiiv.Sms.SendAsync(new SendSmsParams

@@ -17,7 +17,7 @@ public class SmsTests
             "from": null,
             "reference": "order_4521",
             "messages": [ { "id": "sms_6740a1b2c3d4e5f6a7b8c9d0", "to": "+2348031234567", "status": "queued", "pages": 1 } ],
-            "rejected": [ { "to": "123", "reason": "Not a valid Nigerian mobile number." } ],
+            "rejected": [ { "to": "123", "reason": "Not a valid mobile number." } ],
             "recipients": 1,
             "pages_per_message": 1,
             "encoding": "GSM-7",
